@@ -1,1 +1,205 @@
+<!doctype html>
 
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kalkulator HD</title>
+  <style>
+    :root{
+      --bg:#0f1724; /* deep navy */
+      --panel:#0b1220;
+      --accent:#06b6d4; /* teal */
+      --muted:#9aa6b2;
+      --glass: rgba(255,255,255,0.04);
+      --glass-2: rgba(255,255,255,0.02);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,var(--bg),#07101a 120%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }/* Card */
+.card{
+  width:380px;
+  max-width:96vw;
+  border-radius:20px;
+  background: linear-gradient(180deg,var(--panel), rgba(8,14,22,0.85));
+  box-shadow: 0 10px 30px rgba(2,6,12,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  padding:18px;
+  color:#e6eef3;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.brand{
+  display:flex;gap:12px;align-items:center;margin-bottom:8px
+}
+.logo{
+  width:44px;height:44px;border-radius:10px;display:inline-grid;place-items:center;background:linear-gradient(135deg,var(--accent),#7c3aed);box-shadow:0 6px 18px rgba(4,9,14,0.6), 0 1px 0 rgba(255,255,255,0.03) inset;
+  font-weight:700;color:#021018;font-size:20px
+}
+.title{font-weight:600}
+.subtitle{font-size:12px;color:var(--muted)}
+
+/* Display */
+.display{
+  margin-top:12px;padding:18px;border-radius:14px;background:linear-gradient(180deg,var(--glass),var(--glass-2));
+  box-shadow: inset 0 -12px 30px rgba(2,6,12,0.2);
+  min-height:88px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;
+  gap:6px;overflow:hidden
+}
+.output-small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;}
+.output-big{font-size:34px;font-weight:600;letter-spacing:0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+
+/* Buttons grid */
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+button.key{
+  height:64px;border-radius:12px;border:0;font-size:18px;font-weight:600;cursor:pointer;outline:none;transition:transform .08s ease, box-shadow .08s ease;
+  box-shadow: 0 6px 18px rgba(2,6,12,0.45), inset 0 1px 0 rgba(255,255,255,0.02);
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color:var(--muted);
+}
+button.key:active{transform:translateY(2px)}
+
+button.op{color:var(--accent);background:linear-gradient(180deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02));}
+button.wide{grid-column:span(2}
+button.zero{grid-column:span(2}
+
+.key.function{background:linear-gradient(180deg, rgba(0,0,0,0.08), rgba(255,255,255,0.01));color:var(--muted)}
+
+/* small responsive tweak */
+@media (max-width:420px){.card{width:330px}.output-big{font-size:28px}.keys button{height:56px}}
+
+  </style>
+</head>
+<body>
+  <div class="card" role="application" aria-label="Kalkulator HD">
+    <div class="brand">
+      <div class="logo">FIK</div>
+      <div>
+        <div class="title">Kalkulator</div>
+        <div class="subtitle">Tampilan tajam • Dukungan keyboard • Fungsi lanjutan</div>
+      </div>
+    </div><div class="display" id="display">
+  <div class="output-small" id="prev">&nbsp;</div>
+  <div class="output-big" id="result">0</div>
+</div>
+
+<div class="keys" id="keys">
+  <button class="key function" data-action="clear">C</button>
+  <button class="key function" data-action="back">⌫</button>
+  <button class="key function" data-action="sq">√</button>
+  <button class="key op" data-value="/">÷</button>
+
+  <button class="key" data-value="7">7</button>
+  <button class="key" data-value="8">8</button>
+  <button class="key" data-value="9">9</button>
+  <button class="key op" data-value="*">×</button>
+
+  <button class="key" data-value="4">4</button>
+  <button class="key" data-value="5">5</button>
+  <button class="key" data-value="6">6</button>
+  <button class="key op" data-value="-">−</button>
+
+  <button class="key" data-value="1">1</button>
+  <button class="key" data-value="2">2</button>
+  <button class="key" data-value="3">3</button>
+  <button class="key op" data-value="+">+</button>
+
+  <button class="key zero" data-value="0" style="grid-column:span 2">0</button>
+  <button class="key" data-value=".">.</button>
+  <button class="key op" data-action="equals">=</button>
+</div>
+
+  </div>  <script>
+    (function(){
+      const prevEl = document.getElementById('prev');
+      const resEl = document.getElementById('result');
+      const keys = document.getElementById('keys');
+
+      let expr = '';
+      let lastResult = null;
+
+      function updateDisplay(){
+        prevEl.textContent = expr || '\u00A0';
+        resEl.textContent = lastResult !== null ? lastResult : (expr || '0');
+      }
+
+      function sanitizeForEval(s){
+        // allow digits, operators, parentheses and dot only
+        return s.replace(/[^0-9+\-*/().%]/g,'');
+      }
+
+      function compute(s){
+        try{
+          // support percent: convert '50%' to '(50/100)'
+          s = s.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+          s = sanitizeForEval(s);
+          // eslint-disable-next-line no-new-func
+          const fn = new Function('return ' + s);
+          const v = fn();
+          if(!isFinite(v)) throw new Error('Tidak terdefinisi');
+          return Math.round((v + Number.EPSILON) * 1e12) / 1e12; // rounding
+        }catch(e){
+          return 'Error';
+        }
+      }
+
+      keys.addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if(!btn) return;
+        const val = btn.dataset.value;
+        const action = btn.dataset.action;
+
+        if(action === 'clear'){
+          expr = '';
+          lastResult = null;
+        } else if(action === 'back'){
+          expr = expr.slice(0,-1);
+        } else if(action === 'equals'){
+          if(expr.trim() === '') return;
+          const res = compute(expr);
+          lastResult = res;
+          expr = String(res);
+        } else if(action === 'sq'){
+          if(expr.trim()==='') return;
+          const res = compute('Math.sqrt(' + expr + ')');
+          lastResult = res;
+          expr = String(res);
+        } else if(val !== undefined){
+          // append value (digit/operator/dot)
+          // protect against repeated operators
+          if(/[+\-*/]/.test(val) && expr === ''){
+            if(lastResult !== null){ expr = String(lastResult); }
+            else return; // don't start with operator
+          }
+          expr += val;
+        }
+        updateDisplay();
+      });
+
+      // keyboard support
+      window.addEventListener('keydown', e => {
+        const k = e.key;
+        if((/^[0-9]$/).test(k) || k === '.'){
+          expr += k; updateDisplay(); return;
+        }
+        if(k === 'Enter' || k === '='){ e.preventDefault(); const r=compute(expr); lastResult=r; expr=String(r); updateDisplay(); return; }
+        if(k === 'Backspace'){ expr = expr.slice(0,-1); updateDisplay(); return; }
+        if(k === 'Escape'){ expr=''; lastResult=null; updateDisplay(); return; }
+        if(['+','-','*','/','(',')','%'].includes(k)){ expr += k; updateDisplay(); return; }
+      });
+
+      // initial
+      updateDisplay();
+    })();
+  </script></body>
+</html>
