@@ -1,1 +1,66 @@
+/* Styling dasar untuk tampilan halaman */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
 
+/* Container untuk posisi absolut bunga */
+.flower-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+/* Kontainer utama bunga */
+.flower {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    /* Mengaktifkan animasi putar */
+    animation: rotate 10s linear infinite; 
+}
+
+/* Desain kelopak */
+.petal {
+    position: absolute;
+    width: 60px; /* Lebar kelopak */
+    height: 120px; /* Tinggi kelopak */
+    background: linear-gradient(to top, #ff6b81, #ff9ff3); /* Warna gradien merah muda */
+    border-radius: 50% 50% 0 0; /* Membuat bentuk kelopak */
+    top: 40px; /* Memposisikan kelopak dari atas */
+    left: 70px; /* Memposisikan kelopak dari kiri (200px / 2 - 60px / 2 = 70px) */
+    transform-origin: bottom center; /* Titik putar di bawah kelopak */
+}
+
+/* Memposisikan 5 kelopak dengan rotasi */
+.petal:nth-child(1) { transform: rotate(0deg); }
+.petal:nth-child(2) { transform: rotate(72deg); }
+.petal:nth-child(3) { transform: rotate(144deg); }
+.petal:nth-child(4) { transform: rotate(216deg); }
+.petal:nth-child(5) { transform: rotate(288deg); }
+
+/* Pusat bunga */
+.center {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background-color: #ffcc00; /* Kuning */
+    border-radius: 50%;
+    top: 75px; /* Posisikan di tengah (100px - 25px) */
+    left: 75px; /* Posisikan di tengah (100px - 25px) */
+    z-index: 10; /* Pastikan di atas kelopak */
+}
+
+/* Definisi animasi putar */
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
