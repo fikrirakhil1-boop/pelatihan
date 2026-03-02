@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Star Sensor</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #video-container { position: absolute; bottom: 10px; right: 10px; width: 160px; height: 120px; border-radius: 8px; overflow: hidden; border: 2px solid #333; z-index: 10; transform: scaleX(-1); }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        #status { position: absolute; top: 20px; left: 20px; color: #fff; text-transform: uppercase; letter-spacing: 2px; font-size: 12px; z-index: 10; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="status">Status: Menunggu Kamera...</div>
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const videoElement = document.getElementById('webcam');
+        let scene, camera, renderer, starSystem;
+        let textCoords = [];
+        let isHandOpen = false;
+        
+        // 1. Setup Three.js (Visual)
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.z = 500;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Buat Data Teks (Hidden Canvas untuk ambil koordinat)
+            const textCanvas = document.createElement('canvas');
+            const tCtx = textCanvas.getContext('2d');
+            textCanvas.width = 1000;
+            textCanvas.height = 200;
+            tCtx.fillStyle = 'white';
+            tCtx.font = 'bold 80px Arial';
+            tCtx.textAlign = 'center';
+            tCtx.fillText("Hallo Sayang", 500, 100);
+
+            const imgData = tCtx.getImageData(0, 0, 1000, 200).data;
+            for (let y = 0; y < 200; y += 4) {
+                for (let x = 0; x < 1000; x += 4) {
+                    if (imgData[(y * 1000 + x) * 4] > 128) {
+                        textCoords.push({
+                            x: (x - 500) * 1.2,
+                            y: (100 - y) * 1.2,
+                            z: 0
+                        });
+                    }
+                }
+            }
+
+            // Buat Partikel Bintang
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(textCoords.length * 3);
+            const origins = new Float32Array(textCoords.length * 3);
+
+            for (let i = 0; i < textCoords.length; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 2000;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+
+                origins[i * 3] = positions[i * 3];
+                origins[i * 3 + 1] = positions[i * 3 + 1];
+                origins[i * 3 + 2] = positions[i * 3 + 2];
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('origin', new THREE.BufferAttribute(origins, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 2.5,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            });
+
+            starSystem = new THREE.Points(geometry, material);
+            scene.add(starSystem);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const pos = starSystem.geometry.attributes.position.array;
+            const ori = starSystem.geometry.attributes.origin.array;
+
+            for (let i = 0; i < textCoords.length; i++) {
+                const i3 = i * 3;
+                let targetX, targetY, targetZ;
+
+                if (isHandOpen) {
+                    // Tarik ke arah teks
+                    targetX = textCoords[i].x;
+                    targetY = textCoords[i].y;
+                    targetZ = textCoords[i].z;
+                } else {
+                    // Kembali ke posisi bintang acak
+                    targetX = ori[i3];
+                    targetY = ori[i3+1];
+                    targetZ = ori[i3+2];
+                }
+
+                pos[i3] += (targetX - pos[i3]) * 0.08;
+                pos[i3+1] += (targetY - pos[i3+1]) * 0.08;
+                pos[i3+2] += (targetZ - pos[i3+2]) * 0.08;
+            }
+
+            starSystem.geometry.attributes.position.needsUpdate = true;
+            starSystem.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+
+        // 2. Setup Mediapipe (Hand Sensor)
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                // Cek apakah jari telunjuk lebih tinggi dari pangkalnya (indikasi tangan terbuka)
+                const isOpen = landmarks[8].y < landmarks[6].y;
+                
+                if (isOpen !== isHandOpen) {
+                    isHandOpen = isOpen;
+                    statusEl.innerText = isHandOpen ? "Status: TANGAN TERBUKA (Membentuk Ucapan)" : "Status: TANGAN MENUTUP (Menjadi Bintang)";
+                    statusEl.style.color = isHandOpen ? "#00ffcc" : "#fff";
+                }
+            }
+        });
+
+        const cameraFeed = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+
+        cameraFeed.start().then(() => {
+            statusEl.innerText = "Status: Kamera Aktif. Gerakkan Tangan Anda!";
+            initThree();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
